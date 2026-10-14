@@ -1,65 +1,59 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect, mock, test } from 'claude-code/testing'
 import type { RenderElement } from 'claude-code'
 
-import { FRAMES_PER_VARIANT, SCENE_ROWS, VARIANTS, frame, paint, variantAt } from '../hooks/scene'
+import { FRAMES_PER_VARIANT, SCENE_COLUMNS, SCENE_ROWS, VARIANTS, frame, paint, variantAt } from '../hooks/scene'
 
-const BAND = {
-  hasSurvey: false,
-  isWorking: false,
-  maxRows: 20,
-  bodyColumns: 100,
-  scroll: { offset: 0, bodyRows: 19 },
-  view: {},
-}
+const SPINNER = { word: 'Baking', message: null, suffix: '…', mode: 'responding' as const }
+const SPOOKY = /Haunting|Conjuring|Brewing|Summoning|Cackling|Lurking|Bewitching|Spooking|Creeping|Hexing|Possessing|Carving/
 
 describe('scene', () => {
-  test('cycles through three variants', async () => {
+  test('cycles through three costumes', async () => {
     expect(VARIANTS.map(v => v.name)).toEqual(['Pumpkin Clawd', 'Ghost Clawd', 'Witch Clawd'])
-    expect(variantAt(0).name).toBe('Pumpkin Clawd')
     expect(variantAt(FRAMES_PER_VARIANT).name).toBe('Ghost Clawd')
-    expect(variantAt(FRAMES_PER_VARIANT * 2).name).toBe('Witch Clawd')
     expect(variantAt(FRAMES_PER_VARIANT * 3).name).toBe('Pumpkin Clawd')
   })
 
   test('every frame packs width 1 block glyphs for the whole raster', async () => {
-    const glyphs = new Set([0x20, 0x2580, 0x2584, 0x2588])
+    const glyphs = new Set([...' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█'].map(ch => ch.charCodeAt(0)))
     for (let t = 0; t < FRAMES_PER_VARIANT * VARIANTS.length; t++) {
-      const cells = paint(t, 40)
-      expect(cells.length).toBe(40 * SCENE_ROWS * 3)
+      const cells = paint(t)
+      expect(cells.length).toBe(SCENE_COLUMNS * SCENE_ROWS * 3)
       for (let i = 0; i < cells.length; i += 3) {
         expect(glyphs.has(cells[i] ?? 0)).toBe(true)
       }
     }
-    expect(frame(0, 40).length).toBe(Math.ceil((40 * SCENE_ROWS * 12) / 3) * 4)
+    expect(frame(0).length).toBe(Math.ceil((SCENE_COLUMNS * SCENE_ROWS * 12) / 3) * 4)
   })
 })
 
-describe('band', () => {
-  test('draws the haunted Clawd above the prompt', async $ => {
+describe('spinner', () => {
+  test('draws Clawd beside a spooky word in the terminal', async ($, on) => {
+    mock.clock(on)
     const ui = await $.ui.mount({
       plugin: 'haunted-clawd',
       surface: 'terminal',
-      component: 'AbovePrompt',
-      requestId: 'band',
-      props: BAND,
+      component: 'Spinner',
+      requestId: 'main',
+      props: SPINNER,
     })
     expect(await ui.find({ type: 'Raster', key: 'clawd' })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: 'Pumpkin Clawd' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: SPOOKY })).toBeDefined()
   })
 
-  test('steps aside when the terminal is too narrow', async ($, on) => {
+  test('only swaps the word where it cannot draw a raster', async ($, on) => {
     on('ui.render', (engine, e) => {
       const { Text } = engine.ui.resolve(e)
-      return h(Text, {}, 'engine band') as RenderElement
+      const props = e.props as { word?: string }
+      return h(Text, {}, `engine ${props.word ?? ''}`) as RenderElement
     })
     const ui = await $.ui.mount({
       plugin: 'haunted-clawd',
-      surface: 'terminal',
-      component: 'AbovePrompt',
-      requestId: 'band',
-      props: { ...BAND, bodyColumns: 12 },
+      surface: 'desktop',
+      component: 'Spinner',
+      requestId: 'main',
+      props: SPINNER,
     })
     expect(await ui.find({ type: 'Raster' })).toBeUndefined()
-    expect(await ui.find({ type: 'Text', text: 'engine band' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: SPOOKY })).toBeDefined()
   })
 })

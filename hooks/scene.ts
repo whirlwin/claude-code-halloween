@@ -1,18 +1,17 @@
-// The band's picture: a canvas of square pixels, two to a terminal cell
-// (upper and lower half blocks), packed into Raster cells.
+// The spinner's picture: a canvas of quadrant pixels, four to a terminal cell
+// (the glyphs the welcome screen draws Clawd with), packed into Raster cells.
 
 export const DEFAULT = 0x01000000
-export const SCENE_ROWS = 8
-export const MIN_COLUMNS = 24
-export const MAX_COLUMNS = 56
+export const SCENE_COLUMNS = 12
+export const SCENE_ROWS = 3
 export const TICK_MS = 150
 export const FRAMES_PER_VARIANT = 60
 
+const WIDTH = SCENE_COLUMNS * 2
 const HEIGHT = SCENE_ROWS * 2
-const POOF_FRAMES = 4
+const POOF_FRAMES = 3
 
-// Clawd as the welcome screen draws him, one quadrant glyph pixel per column
-// and doubled in height, so a half block pixel keeps his proportions.
+// Clawd as the welcome screen draws him, one character per quadrant pixel.
 const CLAWD = [
   '...############...',
   '...##.######.##...',
@@ -22,14 +21,14 @@ const CLAWD = [
 ]
 const CLAWD_WIDTH = 18
 const EYES = [5, 12]
-const LEFT = 2
-const TOP = 6
+const TOP = 1
+// The columns right of Clawd where each costume's effect plays.
+const ZONE = CLAWD_WIDTH
 
-type Canvas = { width: number; px: Uint32Array }
+type Canvas = Uint32Array
 
 export type Variant = {
   name: string
-  tagline: string
   color: string
   draw: (c: Canvas, t: number) => void
 }
@@ -41,44 +40,19 @@ function rnd(a: number, b: number, c = 0): number {
 }
 
 function set(c: Canvas, x: number, y: number, color: number): void {
-  if (x >= 0 && x < c.width && y >= 0 && y < HEIGHT) {
-    c.px[y * c.width + x] = color
-  }
+  if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) c[y * WIDTH + x] = color
 }
 
-function body(c: Canvas, oy: number, color: (x: number, y: number) => number, rows = CLAWD.length): void {
-  for (let q = 0; q < rows; q++) {
-    const line = CLAWD[q] ?? ''
+function get(c: Canvas, x: number, y: number): number {
+  return c[y * WIDTH + x] ?? DEFAULT
+}
+
+function body(c: Canvas, top: number, color: (x: number, y: number) => number, rows = CLAWD.length): void {
+  for (let y = 0; y < rows; y++) {
+    const line = CLAWD[y] ?? ''
     for (let x = 0; x < CLAWD_WIDTH; x++) {
-      if (line[x] === '#') {
-        set(c, LEFT + x, oy + q * 2, color(x, q * 2))
-        set(c, LEFT + x, oy + q * 2 + 1, color(x, q * 2 + 1))
-      }
+      if (line[x] === '#') set(c, x, top + y, color(x, y))
     }
-  }
-}
-
-function sprite(c: Canvas, x0: number, y0: number, rows: string[], color: number): void {
-  rows.forEach((row, y) => {
-    for (let x = 0; x < row.length; x++) {
-      if (row[x] === '#') set(c, x0 + x, y0 + y, color)
-    }
-  })
-}
-
-const BAT_UP = ['#...#', '.###.']
-const BAT_DOWN = ['.###.', '#...#']
-
-function bats(c: Canvas, t: number): void {
-  const lane = c.width + 10
-  for (const [speed, offset, height, color] of [
-    [1, 0, 2, 0x9b6bd6],
-    [2, 17, 7, 0x7a4fb5],
-    [1, 31, 11, 0xb38be6],
-  ] as const) {
-    const x = c.width - ((t * speed + offset) % lane)
-    const y = height + Math.round(Math.sin((t + offset) / 3) * 1.5)
-    sprite(c, x, y, (t + offset) % 4 < 2 ? BAT_UP : BAT_DOWN, color)
   }
 }
 
@@ -86,107 +60,74 @@ const FLAME = [0xffd23f, 0xffb000, 0xfff1a8, 0xffc83d]
 
 const pumpkin: Variant = {
   name: 'Pumpkin Clawd',
-  tagline: 'carved, lit, slightly singed',
   color: '#FF7518',
   draw(c, t) {
-    bats(c, t)
     body(c, TOP, x => (x === 6 || x === 11 ? 0xd9590f : 0xff7518))
     const glow = FLAME[Math.floor(rnd(t, 7) * FLAME.length)] ?? 0xffd23f
-    for (const eye of EYES) {
-      for (const [dx, dy] of [[0, 2], [0, 3], [-1, 3], [1, 3]] as const) {
-        set(c, LEFT + eye + dx, TOP + dy, glow)
-      }
-    }
-    for (const x of [5, 7, 9, 11, 13]) set(c, LEFT + x, TOP + 5, glow)
-    for (const x of [6, 8, 10, 12]) set(c, LEFT + x, TOP + 6, glow)
-    sprite(c, LEFT + 8, TOP - 3, ['...#', '.#.#', '##..'], 0x4e8a2e)
+    for (const eye of EYES) set(c, eye, TOP + 1, glow)
+    for (const x of [6, 8, 10, 12]) set(c, x, TOP + 3, glow)
+    set(c, 8, 0, 0x4e8a2e)
+    set(c, 9, 0, 0x4e8a2e)
+    set(c, 10, 0, 0x6fbf3a)
+    const bx = ZONE + 1 + (Math.floor(t / 3) % 3)
+    const by = Math.floor(t / 2) % 4 < 2 ? 1 : 2
+    const isUp = t % 4 < 2
+    set(c, bx, by + (isUp ? 0 : 1), 0x9b6bd6)
+    set(c, bx + 2, by + (isUp ? 0 : 1), 0x9b6bd6)
+    set(c, bx + 1, by + (isUp ? 1 : 0), 0x9b6bd6)
   },
 }
 
 const ghost: Variant = {
   name: 'Ghost Clawd',
-  tagline: 'boo. also, your tests pass',
   color: '#E8ECF4',
   draw(c, t) {
-    const oy = TOP - 1 + Math.round(Math.sin(t * 0.4))
-    body(c, oy, (_, y) => (y >= 6 ? 0xc9d3e3 : 0xe8ecf4), 4)
+    const top = Math.floor(t / 4) % 2
+    body(c, top, () => 0xe8ecf4, 4)
     const hem = Math.floor(t / 2) % 3
     for (let x = 3; x <= 14; x++) {
-      set(c, LEFT + x, oy + 8, 0xc9d3e3)
-      if ((x + hem) % 3 !== 0) set(c, LEFT + x, oy + 9, 0xb8c4d6)
+      if ((x + hem) % 3 !== 0) set(c, x, top + 4, 0xb8c4d6)
     }
-    for (const eye of EYES) {
-      set(c, LEFT + eye, oy + 2, 0x2e3440)
-      set(c, LEFT + eye, oy + 3, 0x2e3440)
-    }
-    for (const [x, y] of [[8, 5], [9, 5], [8, 6], [9, 6]] as const) {
-      set(c, LEFT + x, oy + y, 0x2e3440)
-    }
-    for (let x = 22; x < c.width; x++) {
-      for (let y = 0; y < HEIGHT - 4; y++) {
-        const r = rnd(x, y, Math.floor(t / 3))
-        if (r < 0.006) set(c, x, y, 0x88c0d0)
+    for (const eye of EYES) set(c, eye, top + 1, 0x2e3440)
+    set(c, 8, top + 2, 0x2e3440)
+    set(c, 9, top + 2, 0x2e3440)
+    for (let x = ZONE; x < WIDTH; x++) {
+      for (let y = 0; y < HEIGHT - 1; y++) {
+        if (rnd(x, y, Math.floor(t / 3)) < 0.06) set(c, x, y, 0x88c0d0)
       }
     }
-    for (let x = 0; x < c.width; x++) {
-      for (const y of [HEIGHT - 2, HEIGHT - 1]) {
-        if (rnd(Math.floor((x + t) / 2), y) < (y === HEIGHT - 1 ? 0.7 : 0.35)) {
-          set(c, x, y, y === HEIGHT - 1 ? 0x5e6b7d : 0x7a8799)
-        }
+    for (let x = 0; x < WIDTH; x++) {
+      if (get(c, x, HEIGHT - 1) === DEFAULT && rnd(Math.floor((x + t) / 2), 9) < 0.5) {
+        set(c, x, HEIGHT - 1, 0x6c7a89)
       }
     }
   },
 }
 
-const HAT = [
-  '.........##.......',
-  '.......####.......',
-  '......######......',
-  '.....########.....',
-  '....##########....',
-  '##################',
-]
-
 const witch: Variant = {
   name: 'Witch Clawd',
-  tagline: 'brewing something compiled',
   color: '#B38BE6',
   draw(c, t) {
-    const moon = c.width - 8
-    for (let y = 0; y < 9; y++) {
-      for (let x = moon - 4; x <= moon + 4; x++) {
-        if ((x - moon) ** 2 + (y - 4) ** 2 <= 13) {
-          set(c, x, y, (x === moon + 1 && y === 3) || (x === moon - 2 && y === 5) ? 0xd9c98a : 0xf5e6a8)
-        }
-      }
+    body(c, TOP, () => 0xd77757)
+    for (let x = 6; x <= 11; x++) set(c, x, 0, 0x6a2c9e)
+    for (let x = 1; x <= 16; x++) set(c, x, TOP, 0x3d1a5b)
+    set(c, 8, TOP, 0xffd700)
+    set(c, 9, TOP, 0xffd700)
+    const eyes = t % 25 === 0 ? 0xd77757 : 0x7cfc00
+    for (const eye of EYES) set(c, eye, TOP + 1, eyes)
+    for (const [x, y] of [[21, 0], [22, 0], [20, 1], [21, 1], [22, 1], [23, 1], [21, 2], [22, 2]] as const) {
+      set(c, x, y, 0xf5e6a8)
     }
-    for (let i = 0; i < 14; i++) {
-      const x = 22 + Math.floor(rnd(i, 1) * Math.max(1, c.width - 32))
-      const y = Math.floor(rnd(i, 2) * (HEIGHT - 3))
-      const twinkle = rnd(i, Math.floor(t / 2))
-      if (twinkle > 0.3) set(c, x, y, twinkle > 0.75 ? 0xffffff : 0x8888aa)
+    for (let i = 0; i < 4; i++) {
+      const x = ZONE + Math.floor(rnd(i, 1) * 3)
+      const y = Math.floor(rnd(i, 2) * HEIGHT)
+      if (rnd(i, Math.floor(t / 2)) > 0.4) set(c, x, y, 0xffffff)
     }
     if (t % 37 < 2) {
-      let x = 24 + Math.floor(rnd(Math.floor(t / 37), 3) * Math.max(1, c.width - 36))
-      for (let y = 0; y < HEIGHT; y++) {
+      for (const [x, y] of [[20, 1], [19, 2], [20, 3], [21, 3], [20, 4], [19, 5]] as const) {
         set(c, x, y, 0xfff7ae)
-        x += y % 3 === 2 ? -1 : 1
       }
     }
-    body(c, TOP, () => 0xd77757)
-    const isBlinking = t % 25 === 0
-    for (const eye of EYES) {
-      const color = isBlinking ? 0xd77757 : 0x7cfc00
-      set(c, LEFT + eye, TOP + 2, color)
-      set(c, LEFT + eye, TOP + 3, color)
-    }
-    HAT.forEach((row, y) => {
-      for (let x = 0; x < row.length; x++) {
-        if (row[x] === '#') set(c, LEFT + x, y, y === HAT.length - 1 ? 0x3d1a5b : 0x6a2c9e)
-      }
-    })
-    set(c, LEFT + 8, 4, 0xffd700)
-    set(c, LEFT + 9, 4, 0xffd700)
   },
 }
 
@@ -198,40 +139,46 @@ export function variantAt(t: number): Variant {
 
 const SMOKE = [0x8b5fbf, 0x6fbf3a, 0xb0b0b0]
 
-// A puff of smoke over the first frames of each variant hides the swap.
+// A puff of smoke over the first frames of each costume hides the swap.
 function poof(c: Canvas, t: number): void {
   const f = t % FRAMES_PER_VARIANT
   if (f >= POOF_FRAMES) return
   const density = (POOF_FRAMES - f) / (POOF_FRAMES + 1)
   for (let y = 0; y < HEIGHT; y++) {
-    for (let x = 0; x < LEFT + CLAWD_WIDTH + 2; x++) {
-      if (rnd(x, y, t) < density) {
-        set(c, x, y, SMOKE[Math.floor(rnd(y, x, t) * SMOKE.length)] ?? 0xb0b0b0)
-      }
+    for (let x = 0; x < CLAWD_WIDTH; x++) {
+      if (rnd(x, y, t) < density) set(c, x, y, SMOKE[Math.floor(rnd(y, x, t) * SMOKE.length)] ?? 0xb0b0b0)
     }
   }
 }
 
-export function paint(t: number, columns: number): Uint32Array {
-  const c: Canvas = { width: columns, px: new Uint32Array(columns * HEIGHT).fill(DEFAULT) }
+// Indexed by which quadrants hold the foreground: 1 upper left, 2 upper
+// right, 4 lower left, 8 lower right.
+const QUADRANTS = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█'
+
+// A cell holds two colors, so a busier block keeps its two commonest and
+// paints the rest in the second.
+function cell(pixels: number[]): [number, number, number] {
+  const counts = new Map<number, number>()
+  for (const p of pixels) counts.set(p, (counts.get(p) ?? 0) + 1)
+  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1] || (a[0] === DEFAULT ? 1 : -1))
+  const fg = ranked.find(([color]) => color !== DEFAULT)?.[0]
+  if (fg === undefined) return [0x20, DEFAULT, DEFAULT]
+  const bg = counts.has(DEFAULT) ? DEFAULT : (ranked.find(([color]) => color !== fg)?.[0] ?? DEFAULT)
+  const mask = pixels.reduce((m, p, i) => (p === fg ? m | (1 << i) : m), 0)
+  return [QUADRANTS.charCodeAt(mask), fg, bg]
+}
+
+export function paint(t: number): Uint32Array {
+  const c: Canvas = new Uint32Array(WIDTH * HEIGHT).fill(DEFAULT)
   variantAt(t).draw(c, t)
   poof(c, t)
 
-  const cells = new Uint32Array(columns * SCENE_ROWS * 3)
+  const cells = new Uint32Array(SCENE_COLUMNS * SCENE_ROWS * 3)
   for (let row = 0; row < SCENE_ROWS; row++) {
-    for (let x = 0; x < columns; x++) {
-      const top = c.px[row * 2 * columns + x] ?? DEFAULT
-      const bottom = c.px[(row * 2 + 1) * columns + x] ?? DEFAULT
-      const at = (row * columns + x) * 3
-      if (top === DEFAULT && bottom === DEFAULT) {
-        cells.set([0x20, DEFAULT, DEFAULT], at)
-      } else if (top === bottom) {
-        cells.set([0x2588, top, DEFAULT], at)
-      } else if (top === DEFAULT) {
-        cells.set([0x2584, bottom, DEFAULT], at)
-      } else {
-        cells.set([0x2580, top, bottom], at)
-      }
+    for (let col = 0; col < SCENE_COLUMNS; col++) {
+      const x = col * 2
+      const y = row * 2
+      cells.set(cell([get(c, x, y), get(c, x + 1, y), get(c, x, y + 1), get(c, x + 1, y + 1)]), (row * SCENE_COLUMNS + col) * 3)
     }
   }
   return cells
@@ -257,6 +204,6 @@ export function encode(words: Uint32Array): string {
   return out
 }
 
-export function frame(t: number, columns: number): string {
-  return encode(paint(t, columns))
+export function frame(t: number): string {
+  return encode(paint(t))
 }

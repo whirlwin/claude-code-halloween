@@ -1,44 +1,57 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
-import { MAX_COLUMNS, MIN_COLUMNS, SCENE_ROWS, TICK_MS, FRAMES_PER_VARIANT, frame, variantAt } from './scene'
+import { FRAMES_PER_VARIANT, SCENE_COLUMNS, SCENE_ROWS, TICK_MS, frame, variantAt } from './scene'
 
 const isHidden = atom({ plugin: 'haunted-clawd', key: 'isHidden' } as const, false)
 
 const RASTER = 'clawd'
-const CAPTION_COLUMNS = 32
+const TICKS_PER_SECOND = Math.round(1000 / TICK_MS)
 
 const SPOOKY = ['Haunting', 'Conjuring', 'Brewing', 'Summoning', 'Cackling', 'Lurking', 'Bewitching', 'Spooking', 'Creeping', 'Hexing', 'Possessing', 'Carving']
-const SPOOKED = ['Haunted', 'Conjured', 'Brewed', 'Summoned', 'Cackled', 'Lurked', 'Bewitched', 'Spooked', 'Crept', 'Hexed', 'Possessed', 'Carved']
 
 // Keyed on the engine's own sampled word, so a line keeps its word across redraws.
-function pick(words: string[], seed: string): string {
+function pick(seed: string): string {
   let h = 0
   for (const ch of seed) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0
-  return words[Math.abs(h) % words.length] ?? words[0] ?? seed
+  return SPOOKY[Math.abs(h) % SPOOKY.length] ?? seed
+}
+
+function elapsed(ms: number): string {
+  const s = Math.floor(ms / 1000)
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
 }
 
 export const register: Register = on => {
   let tick = 0
-  let isOff = false
-  // The band as last drawn, which the timer repaints between draws.
-  let site: { requestId: string; columns: number } | null = null
+  // The spinner as last drawn, which the timer repaints between draws.
+  let spinner: string | null = null
+  // When each spinner first drew: drawing a tree replaces the engine's own
+  // elapsed time, so the mod keeps its own.
+  const startedAt = new Map<string, number>()
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'halloween',
-      description: 'Show or hide the haunted Clawd; "next" summons the next one',
+      description: 'Show or hide the haunted Clawd in the spinner; "next" summons the next one',
       argumentHint: '[next]',
     })
 
     $.clock.every(TICK_MS, () => {
       tick += 1
-      if (tick % FRAMES_PER_VARIANT === 0) {
-        // The caption names the variant, so a new one is a redraw, not a blit.
+      if (spinner === null) return
+      // The name and timer are text, so a new costume or second is a redraw.
+      if (tick % FRAMES_PER_VARIANT === 0 || tick % TICKS_PER_SECOND === 0) {
         $.ui.invalidate('ui.render')
-      } else if (site !== null && !isOff) {
-        void $.ui.blit({ requestId: site.requestId, key: RASTER, cells: frame(tick, site.columns) })
+        return
       }
+      const requestId = spinner
+      void $.ui.blit({ requestId, key: RASTER, cells: frame(tick) }).then(result => {
+        if (result.deny !== undefined && spinner === requestId) {
+          spinner = null
+          startedAt.delete(requestId)
+        }
+      })
     })
 
     return next(e)
@@ -55,40 +68,33 @@ export const register: Register = on => {
     return { text: hidden ? 'Clawd returns to the crypt.' : 'Clawd rises again.' }
   })
 
-  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.surface !== 'terminal') return next(e)
-    isOff = await read($, isHidden)
-    const { bodyColumns, hasSurvey, maxRows } = e.props
-    if (isOff || hasSurvey || maxRows < SCENE_ROWS || bodyColumns < MIN_COLUMNS) {
-      site = null
+  on('ui.render', { component: 'Spinner' }, async ($, e, next) => {
+    if (await read($, isHidden)) {
+      spinner = null
       return next(e)
     }
+    const word = pick(e.props.word)
+    if (e.surface !== 'terminal') {
+      return next({ ...e, props: { ...e.props, word } })
+    }
 
-    const hasCaption = bodyColumns - MIN_COLUMNS >= CAPTION_COLUMNS
-    const columns = Math.min(MAX_COLUMNS, hasCaption ? bodyColumns - CAPTION_COLUMNS : bodyColumns)
-    site = { requestId: e.requestId, columns }
+    const now = await $.clock.now()
+    const start = startedAt.get(e.requestId) ?? now
+    startedAt.set(e.requestId, start)
+    spinner = e.requestId
     const variant = variantAt(tick)
     const { Box, Raster, Text } = $.ui.resolve(e)
 
     return (
       <Box flexDirection="row">
-        <Raster key={RASTER} columns={columns} rows={SCENE_ROWS} cells={frame(tick, columns)} />
-        {hasCaption && (
-          <Box flexDirection="column" justifyContent="center" marginLeft={2}>
-            <Text bold color={variant.color}>{variant.name}</Text>
-            <Text dimColor>{variant.tagline}</Text>
-            <Text dimColor>/halloween next, or /halloween to hide</Text>
-          </Box>
-        )}
+        <Raster key={RASTER} columns={SCENE_COLUMNS} rows={SCENE_ROWS} cells={frame(tick)} />
+        <Box flexDirection="column" justifyContent="center" marginLeft={1}>
+          <Text>
+            <Text color={variant.color}>{e.props.message ?? word}{e.props.suffix}</Text>
+            <Text dimColor> ({elapsed(now - start)})</Text>
+          </Text>
+        </Box>
       </Box>
     )
   })
-
-  on('ui.render', { component: 'Spinner' }, ($, e, next) =>
-    next({ ...e, props: { ...e.props, word: pick(SPOOKY, e.props.word) } }),
-  )
-
-  on('ui.render', { component: 'TurnDuration' }, ($, e, next) =>
-    next({ ...e, props: { ...e.props, word: pick(SPOOKED, e.props.word) } }),
-  )
 }
