@@ -1,6 +1,6 @@
 {
   "name": "haunted-clawd",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A haunted Clawd in the spinner: pumpkin, ghost and witch, cycling with Halloween effects",
   "author": { "name": "whirlwin" },
   "types": "./types/index.d.ts"

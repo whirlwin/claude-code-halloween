@@ -1,21 +1,12 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
-import { FRAMES_PER_VARIANT, SCENE_COLUMNS, SCENE_ROWS, TICK_MS, frame, variantAt } from './scene'
+import { FRAMES_PER_VARIANT, SCENE_COLUMNS, SCENE_ROWS, TICK_MS, frame, variantAt, wordAt } from './scene'
 
 const isHidden = atom({ plugin: 'haunted-clawd', key: 'isHidden' } as const, false)
 
 const RASTER = 'clawd'
 const TICKS_PER_SECOND = Math.round(1000 / TICK_MS)
-
-const SPOOKY = ['Haunting', 'Conjuring', 'Brewing', 'Summoning', 'Cackling', 'Lurking', 'Bewitching', 'Spooking', 'Creeping', 'Hexing', 'Possessing', 'Carving']
-
-// Keyed on the engine's own sampled word, so a line keeps its word across redraws.
-function pick(seed: string): string {
-  let h = 0
-  for (const ch of seed) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0
-  return SPOOKY[Math.abs(h) % SPOOKY.length] ?? seed
-}
 
 function elapsed(ms: number): string {
   const s = Math.floor(ms / 1000)
@@ -73,7 +64,9 @@ export const register: Register = on => {
       spinner = null
       return next(e)
     }
-    const word = pick(e.props.word)
+    // The costume's own word, not one derived from the engine's: that word
+    // can stay the same turn after turn, which pinned the spinner to one.
+    const word = wordAt(tick)
     if (e.surface !== 'terminal') {
       return next({ ...e, props: { ...e.props, word } })
     }

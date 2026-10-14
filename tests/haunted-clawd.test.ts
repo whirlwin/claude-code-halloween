@@ -1,16 +1,27 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { RenderElement } from 'claude-code'
 
-import { FRAMES_PER_VARIANT, SCENE_COLUMNS, SCENE_ROWS, VARIANTS, frame, paint, variantAt } from '../hooks/scene'
+import { FRAMES_PER_VARIANT, SCENE_COLUMNS, SCENE_ROWS, VARIANTS, frame, paint, variantAt, wordAt } from '../hooks/scene'
 
 const SPINNER = { word: 'Baking', message: null, suffix: '…', mode: 'responding' as const }
-const SPOOKY = /Haunting|Conjuring|Brewing|Summoning|Cackling|Lurking|Bewitching|Spooking|Creeping|Hexing|Possessing|Carving/
+const SPOOKY = new RegExp(VARIANTS.flatMap(v => v.words).join('|'))
 
 describe('scene', () => {
   test('cycles through three costumes', async () => {
     expect(VARIANTS.map(v => v.name)).toEqual(['Pumpkin Clawd', 'Ghost Clawd', 'Witch Clawd'])
     expect(variantAt(FRAMES_PER_VARIANT).name).toBe('Ghost Clawd')
     expect(variantAt(FRAMES_PER_VARIANT * 3).name).toBe('Pumpkin Clawd')
+  })
+
+  test('says every word of each costume, in its own costume', async () => {
+    const said = new Map<string, Set<string>>()
+    for (let t = 0; t < FRAMES_PER_VARIANT * VARIANTS.length * 6; t++) {
+      const name = variantAt(t).name
+      said.set(name, (said.get(name) ?? new Set()).add(wordAt(t)))
+    }
+    for (const v of VARIANTS) {
+      expect([...(said.get(v.name) ?? [])].sort()).toEqual([...v.words].sort())
+    }
   })
 
   test('every frame packs width 1 block glyphs for the whole raster', async () => {

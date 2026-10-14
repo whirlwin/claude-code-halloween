@@ -30,6 +30,8 @@ type Canvas = Uint32Array
 export type Variant = {
   name: string
   color: string
+  // What the spinner says while this costume is on.
+  words: readonly string[]
   draw: (c: Canvas, t: number) => void
 }
 
@@ -61,6 +63,7 @@ const FLAME = [0xffd23f, 0xffb000, 0xfff1a8, 0xffc83d]
 const pumpkin: Variant = {
   name: 'Pumpkin Clawd',
   color: '#FF7518',
+  words: ['Carving', 'Scooping', 'Flickering', 'Grinning'],
   draw(c, t) {
     body(c, TOP, x => (x === 6 || x === 11 ? 0xd9590f : 0xff7518))
     const glow = FLAME[Math.floor(rnd(t, 7) * FLAME.length)] ?? 0xffd23f
@@ -81,6 +84,7 @@ const pumpkin: Variant = {
 const ghost: Variant = {
   name: 'Ghost Clawd',
   color: '#E8ECF4',
+  words: ['Haunting', 'Lurking', 'Creeping', 'Possessing', 'Spooking'],
   draw(c, t) {
     const top = Math.floor(t / 4) % 2
     body(c, top, () => 0xe8ecf4, 4)
@@ -107,6 +111,7 @@ const ghost: Variant = {
 const witch: Variant = {
   name: 'Witch Clawd',
   color: '#B38BE6',
+  words: ['Brewing', 'Conjuring', 'Hexing', 'Bewitching', 'Cackling', 'Summoning'],
   draw(c, t) {
     body(c, TOP, () => 0xd77757)
     for (let x = 6; x <= 11; x++) set(c, x, 0, 0x6a2c9e)
@@ -135,6 +140,13 @@ export const VARIANTS: readonly Variant[] = [pumpkin, ghost, witch]
 
 export function variantAt(t: number): Variant {
   return VARIANTS[Math.floor(t / FRAMES_PER_VARIANT) % VARIANTS.length] ?? pumpkin
+}
+
+// Each time a costume comes around again it says its next word.
+export function wordAt(t: number): string {
+  const v = variantAt(t)
+  const round = Math.floor(t / (FRAMES_PER_VARIANT * VARIANTS.length))
+  return v.words[round % v.words.length] ?? v.name
 }
 
 const SMOKE = [0x8b5fbf, 0x6fbf3a, 0xb0b0b0]
