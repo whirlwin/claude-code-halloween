@@ -7,10 +7,11 @@ const SPINNER = { word: 'Baking', message: null, suffix: '…', mode: 'respondin
 const SPOOKY = new RegExp(VARIANTS.flatMap(v => v.words).join('|'))
 
 describe('scene', () => {
-  test('cycles through three costumes', async () => {
-    expect(VARIANTS.map(v => v.name)).toEqual(['Pumpkin Clawd', 'Ghost Clawd', 'Witch Clawd'])
-    expect(variantAt(FRAMES_PER_VARIANT).name).toBe('Ghost Clawd')
-    expect(variantAt(FRAMES_PER_VARIANT * 3).name).toBe('Pumpkin Clawd')
+  test('cycles through five costumes', async () => {
+    const names = ['Pumpkin Clawd', 'Ghost Clawd', 'Zombie Clawd', 'Witch Clawd', 'Devil Clawd']
+    expect(VARIANTS.map(v => v.name)).toEqual(names)
+    names.forEach((name, i) => expect(variantAt(FRAMES_PER_VARIANT * i).name).toBe(name))
+    expect(variantAt(FRAMES_PER_VARIANT * names.length).name).toBe('Pumpkin Clawd')
   })
 
   test('says every word of each costume, in its own costume', async () => {

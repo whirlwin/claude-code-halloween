@@ -49,11 +49,11 @@ function get(c: Canvas, x: number, y: number): number {
   return c[y * WIDTH + x] ?? DEFAULT
 }
 
-function body(c: Canvas, top: number, color: (x: number, y: number) => number, rows = CLAWD.length): void {
+function body(c: Canvas, top: number, color: (x: number, y: number) => number, rows = CLAWD.length, left = 0): void {
   for (let y = 0; y < rows; y++) {
     const line = CLAWD[y] ?? ''
     for (let x = 0; x < CLAWD_WIDTH; x++) {
-      if (line[x] === '#') set(c, x, top + y, color(x, y))
+      if (line[x] === '#') set(c, left + x, top + y, color(x, y))
     }
   }
 }
@@ -136,7 +136,62 @@ const witch: Variant = {
   },
 }
 
-export const VARIANTS: readonly Variant[] = [pumpkin, ghost, witch]
+const ZOMBIE = 0x8db360
+const ROT = 0x5e7f3c
+
+const zombie: Variant = {
+  name: 'Zombie Clawd',
+  color: '#8DB360',
+  words: ['Shambling', 'Groaning', 'Lurching', 'Rotting', 'Braaaining'],
+  draw(c, t) {
+    const sway = Math.floor(t / 4) % 2
+    // Rot keyed to the pixel, not the frame, so it stays put as he shambles.
+    body(c, TOP, (x, y) => (rnd(x, y, 99) < 0.18 ? ROT : ZOMBIE), CLAWD.length, sway)
+    for (const x of [5, 6, 7, 8]) set(c, x + sway, TOP, x % 2 === 0 ? 0x4a2c2a : 0x8b1a1a)
+    set(c, (EYES[0] ?? 5) + sway, TOP + 1, 0xf0eac8)
+    set(c, (EYES[1] ?? 12) + sway, TOP + 1, 0xd64541)
+    for (const x of [7, 9, 11]) set(c, x + sway, TOP + 3, 0x3b2f2f)
+    const reach = t % 6 < 3 ? 1 : 2
+    for (let i = 1; i <= reach; i++) set(c, 16 + sway + i, TOP + 2, ZOMBIE)
+    for (let i = 0; i < 2; i++) set(c, 3 + ((t + 7 * i) % 12), 0, 0xc8d96f)
+    set(c, 22, 2, 0x8a8f98)
+    for (let y = 3; y < HEIGHT; y++) {
+      for (const x of [21, 22, 23]) set(c, x, y, x === 22 && y === 3 ? 0x5c616b : 0x8a8f98)
+    }
+  },
+}
+
+const DEVIL = 0xe74c3c
+const EMBER = [0xff4500, 0xff8c00, 0xffd23f]
+const TAIL = [
+  [[15, 4], [16, 4], [17, 4], [18, 3], [19, 2], [18, 1], [19, 1], [20, 1], [19, 0]],
+  [[15, 4], [16, 4], [17, 4], [18, 4], [19, 3], [20, 3], [20, 2], [21, 2], [22, 2], [21, 1]],
+] as const
+
+const devil: Variant = {
+  name: 'Devil Clawd',
+  color: '#E74C3C',
+  words: ['Scheming', 'Tempting', 'Smoldering', 'Bargaining', 'Pitchforking'],
+  draw(c, t) {
+    // Hellfire first, so Clawd stands in it rather than behind it. One color
+    // per cell: a cell shows two, and a third would turn to noise.
+    for (let x = 0; x < WIDTH; x++) {
+      const cell = Math.floor(x / 2)
+      if (rnd(cell, t, 5) < 0.6) set(c, x, HEIGHT - 1, EMBER[Math.floor(rnd(t, cell, 6) * EMBER.length)] ?? 0xff4500)
+    }
+    for (let i = 0; i < 2; i++) set(c, ZONE + 1 + i * 3, HEIGHT - 1 - ((t + 3 * i) % HEIGHT), 0xffd23f)
+    body(c, TOP, (_, y) => (y >= 3 ? 0xa93226 : DEVIL))
+    // Horns in his own red: a third color in the head's top cells would be dropped.
+    set(c, 4, 0, DEVIL)
+    set(c, 13, 0, DEVIL)
+    for (const eye of EYES) set(c, eye, TOP + 1, 0xffe347)
+    for (const x of [7, 8, 9, 10]) set(c, x, TOP + 3, 0x4a0e0e)
+    set(c, 11, TOP + 2, 0x4a0e0e)
+    for (const [x, y] of TAIL[Math.floor(t / 3) % TAIL.length] ?? []) set(c, x, y, DEVIL)
+  },
+}
+
+export const VARIANTS: readonly Variant[] = [pumpkin, ghost, zombie, witch, devil]
 
 export function variantAt(t: number): Variant {
   return VARIANTS[Math.floor(t / FRAMES_PER_VARIANT) % VARIANTS.length] ?? pumpkin
