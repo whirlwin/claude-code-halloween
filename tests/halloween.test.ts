@@ -42,7 +42,7 @@ describe('spinner', () => {
   test('draws Clawd beside a spooky word in the terminal', async ($, on) => {
     mock.clock(on)
     const ui = await $.ui.mount({
-      plugin: 'haunted-claude',
+      plugin: 'halloween',
       surface: 'terminal',
       component: 'Spinner',
       requestId: 'main',
@@ -59,7 +59,7 @@ describe('spinner', () => {
       return h(Text, {}, `engine ${props.word ?? ''}`) as RenderElement
     })
     const ui = await $.ui.mount({
-      plugin: 'haunted-claude',
+      plugin: 'halloween',
       surface: 'desktop',
       component: 'Spinner',
       requestId: 'main',

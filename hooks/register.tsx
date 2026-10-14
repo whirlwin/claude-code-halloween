@@ -3,7 +3,7 @@ import type { Register } from 'claude-code'
 
 import { FRAMES_PER_VARIANT, SCENE_COLUMNS, SCENE_ROWS, TICK_MS, frame, variantAt, wordAt } from './scene'
 
-const isHidden = atom({ plugin: 'haunted-claude', key: 'isHidden' } as const, false)
+const isHidden = atom({ plugin: 'halloween', key: 'isHidden' } as const, false)
 
 const RASTER = 'clawd'
 const TICKS_PER_SECOND = Math.round(1000 / TICK_MS)
