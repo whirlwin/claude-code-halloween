@@ -24,6 +24,18 @@ Nothing else on screen changes, and he is gone the moment the turn ends.
 
 Answer `y` to add the marketplace, then pick a scope.
 
+## Update
+
+`/plugin update` installs from the local clone of the marketplace and does
+not fetch it first, so refresh the clone before updating:
+
+```
+claude plugin marketplace update claude-code-halloween
+claude plugin update haunted-clawd@claude-code-halloween
+```
+
+Then run `/reload-plugins` in an open session, or restart Claude Code.
+
 ## Use
 
 | Command | What it does |
