@@ -22,7 +22,7 @@ Nothing else on screen changes, and he is gone the moment the turn ends.
 ## Install
 
 ```
-/plugin install haunted-clawd --marketplace whirlwin/claude-code-halloween
+/plugin install haunted-claude --marketplace whirlwin/claude-code-halloween
 ```
 
 Answer `y` to add the marketplace, then pick a scope.
@@ -34,7 +34,7 @@ not fetch it first, so refresh the clone before updating:
 
 ```
 claude plugin marketplace update claude-code-halloween
-claude plugin update haunted-clawd@claude-code-halloween
+claude plugin update haunted-claude@claude-code-halloween
 ```
 
 Then run `/reload-plugins` in an open session, or restart Claude Code.
@@ -66,5 +66,7 @@ claude plugin validate .
 claude plugin test .
 ```
 
-The plugin is named `haunted-clawd` because Claude Code reserves plugin names
-starting with `claude-`.
+The plugin is named `haunted-claude` rather than after the repository because
+Claude Code reserves plugin names starting with `claude-`.
+`claude plugin validate` still warns that the name reads as one of
+Anthropic's own; that is a warning only, and the plugin validates and installs.
