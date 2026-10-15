@@ -235,11 +235,17 @@ function cell(pixels: number[]): [number, number, number] {
   return [QUADRANTS.charCodeAt(mask), fg, bg]
 }
 
-export function paint(t: number): Uint32Array {
+// The picture before it is packed into cells, one color per quadrant pixel.
+// The screensaver bakes these, since it has no two-colors-per-cell limit.
+export function pixels(t: number): Uint32Array {
   const c: Canvas = new Uint32Array(WIDTH * HEIGHT).fill(DEFAULT)
   variantAt(t).draw(c, t)
   poof(c, t)
+  return c
+}
 
+export function paint(t: number): Uint32Array {
+  const c = pixels(t)
   const cells = new Uint32Array(SCENE_COLUMNS * SCENE_ROWS * 3)
   for (let row = 0; row < SCENE_ROWS; row++) {
     for (let col = 0; col < SCENE_COLUMNS; col++) {

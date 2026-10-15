@@ -19,6 +19,8 @@ Nothing else on screen changes, and he is gone the moment the turn ends.
 
 ![Frames of the five costumes](docs/preview.png)
 
+He also comes as a bigger macOS [screensaver](#screensaver).
+
 ## Install
 
 ```
@@ -45,6 +47,37 @@ Then run `/reload-plugins` in an open session, or restart Claude Code.
 | --- | --- |
 | `/halloween` | hide Clawd, or bring him back |
 | `/halloween next` | skip straight to the next costume |
+
+## Screensaver
+
+The same five costumes also come as a macOS screensaver, big enough to fill
+the screen. It plays the mod's own frames, baked from `hooks/scene.ts` at
+build time. Each quadrant pixel is drawn as a block twice as tall as it is
+wide, like a terminal cell, so Clawd keeps his shape. Below him are the
+costume's word and how long the screensaver has been running. He moves to a
+new spot with every costume swap, behind the puff of smoke, so nothing burns
+in.
+
+![The screensaver's five costumes and a costume swap](docs/screensaver.png)
+
+Building needs macOS 13 or later, the Xcode command line tools and Node 22.18
+or later (to run `scene.ts` without a compile step):
+
+```
+screensaver/build.sh --install
+```
+
+This builds `screensaver/build/Halloween Clawd.saver` and copies it into
+`~/Library/Screen Savers`. Then pick Halloween Clawd in System Settings,
+Screen Saver. Leave out `--install` to only build it.
+
+`screensaver/render.swift` loads a built saver the way macOS does and renders
+frames offscreen into one PNG. The build uses it for the thumbnails System
+Settings shows, and it drew the picture above:
+
+```
+swift screensaver/render.swift "screensaver/build/Halloween Clawd.saver" docs/screensaver.png 756 491 20 85 140 200 260 1500
+```
 
 ## How it works
 
