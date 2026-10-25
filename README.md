@@ -17,6 +17,8 @@ The word beside him comes from his costume, so it changes with every costume
 swap, and each costume moves on to its next word every time it comes around.
 Nothing else on screen changes, and he is gone the moment the turn ends.
 
+![Clawd in the spinner while Claude runs a command, from devil to pumpkin to ghost](docs/demo.gif)
+
 ![Frames of the five costumes](docs/preview.png)
 
 He also comes as a bigger macOS [screensaver](#screensaver).
