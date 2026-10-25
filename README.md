@@ -101,3 +101,7 @@ claude plugin test .
 
 The plugin is named `halloween` rather than after the repository because
 Claude Code reserves plugin names starting with `claude-`.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
