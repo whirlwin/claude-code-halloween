@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> This theme has moved to [whirlwin/claude-themes](https://github.com/whirlwin/claude-themes/tree/main/plugins/halloween),
+> and this repo is archived. Install it from there:
+> `/plugin install halloween --marketplace https://themes.whirlwin.io/marketplace.json`
+
 # claude-code-halloween
 
 A Claude Code mod that haunts the spinner. While Claude works, a small
